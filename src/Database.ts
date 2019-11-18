@@ -6,7 +6,7 @@ export class Database {
     constructor(name: string, type: string) {
         this.dBName = name;
         this.dBType = type;
-        this.connection = new MongoClient('mongodb://localhost:27017/'/*this.getConnString()*/);
+        this.connection = new MongoClient('mongodb://localhost:27017/', {useUnifiedTopology: true});
     }
     private getConnString() {
         if (this.dBType === 'localhost') {
