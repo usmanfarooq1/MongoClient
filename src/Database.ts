@@ -1,4 +1,5 @@
 let MongoClient = require('mongodb').MongoClient;
+let mongo = require('mongodb');
 export class Database {
     private dBName: string;
     private dBType: string;
@@ -20,14 +21,20 @@ export class Database {
         return new Promise((reject, resolve) => {
             let db_name: string = this.dBName;
             this.connection.connect(function (err: any, connect: any) {
+                if(err){
+                    // connect.close();
+                    reject(err);
+                }
                 let db = connect.db(db_name);
                 db.listCollections().toArray(( items: any,err: any) => {
                     if (err) {
+                        // connect.close();
                         reject(err);
                     } else {
+                        // connect.close();
                         resolve(items);
                     }
-                    connect.close();
+                    // connect.close();
                 });
             });
         });
@@ -38,13 +45,31 @@ export class Database {
             this.connection.connect(function (err: any, connect: any) {
                 let db = connect.db(db_name);
                 let collection = db.collection(collectionName);
-                collection.find().toArray((err: any, data: any) => {
+                collection.find().toArray(( data: any,err: any) => {
                     if (err) {
                         reject(err);
                     } else {
                         resolve(data);
                     }
-                    connect.close();
+                    // connect.close();
+                });
+            });
+        });
+    }
+    public getDocument(id: string,collectionName: string) {
+        return new Promise((reject, resolve) => {
+            let db_name: string = this.dBName;
+            this.connection.connect(function (err: any, connect: any) {
+                let db = connect.db(db_name);
+                let collection = db.collection(collectionName);
+                let o_id = new mongo.ObjectID(id);
+                collection.find({_id:o_id}).toArray(( data: any,err: any) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(data);
+                    }
+                    // connect.close();
                 });
             });
         });

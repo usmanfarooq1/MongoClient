@@ -6,25 +6,48 @@ export class App {
     private databaseName: string = '';
     private databaseLink: string = '';
     private databaseType: string = '';
-
+    private webviewPanel: any;
+    private db: any;
     constructor() {
 
     }
+    private guiCommunicator(message: any): void {
+        switch (message.command) {
+            case 'get-db-name':
+                this.webviewPanel.webview.postMessage({ command: 'db-name', dbName: this.databaseName });
+                break;
+            case 'get-collections':
+                this.db.getCollections().then((collections: any) => {
+                    this.webviewPanel.webview.postMessage({ command: 'collections', collectionsList: collections });
+                }).catch((error: any) => {
+                    console.log('Error', error);
+                });
+                break;
+            case 'get-documents':
+                this.db.getDocuments(message.collectionName).then((documents: any) => {
+                    this.webviewPanel.webview.postMessage({ command: 'documents', documentsList: documents,collection:message.collectionName });
+                }).catch((error: any) => {
+                    console.log('Error', error);
+                });
+                break;
+            case 'get-document':
+                this.db.getDocument(message.documentId,message.collection).then((document: any) => {
+                    console.log(document);
+                    this.webviewPanel.webview.postMessage({ command: 'single-document', document: document.length ? document[0]:{}  });
+                }).catch((error: any) => {
+                    console.log('Error', error);
+                });
+                break;
+        }
+    }
     public Init(): void {
         this.showInputSelection().then(() => {
-            const db = new Database(this.databaseName, this.databaseType);
-            const mainPanel = vscode.window.createWebviewPanel('MongoClient', this.databaseName, vscode.ViewColumn.One, { enableScripts: true });
-
-            mainPanel.webview.onDidReceiveMessage(message => {
-                if (message.command === 'alert') {
-                    db.getCollections().then((collections: any) => {
-                        mainPanel.webview.postMessage({ command: 'alert', data: collections[0].name });
-                    }).catch((error:any) => {
-                        console.log('Error', error);
-                    });
-                }
+            this.db = new Database(this.databaseName, this.databaseType);
+            this.webviewPanel = vscode.window.createWebviewPanel('MongoClient', this.databaseName, vscode.ViewColumn.One, { enableScripts: true });
+            this.webviewPanel.webview.onDidReceiveMessage((message: any) => {
+                this.guiCommunicator(message);
             });
-            mainPanel.webview.html = `
+            this.webviewPanel.webview.html = `
             <!DOCTYPE html>
             <html lang="en">
             
@@ -179,7 +202,7 @@ export class App {
                             <span>Documents</span>
                         </div>
                         <div class="document-list">
-                            <ul id="document-list" class="fontSize20">
+                            <ul id="document-list-ul" class="fontSize20">
                                 
                             </ul>
                         </div>
@@ -197,22 +220,7 @@ export class App {
                         </div>
                         <div class="marginRight10 fontSize20">
                             <table class="tableStyle">
-                                <tbody style="width: 100%;">
-                                    <tr class="trBorderBottom">
-                                        <td><span>usman<span> :</td>
-                                        <td><span>"farooq"</span></td>
-                                        <td class="datatype"><span>type:string</span></td>
-                                    </tr>
-                                    <tr class="trBorderBottom">
-                                        <td><span>usman<span> :</td>
-                                        <td><span>"farooq"</span></td>
-                                        <td class="datatype"><span>type:string</span></td>
-                                    </tr>
-                                    <tr class="trBorderBottom">
-                                        <td><span>usman<span> :</td>
-                                        <td><span>"farooq"</span></td>
-                                        <td class="datatype"><span>type:string</span></td>
-                                    </tr>
+                                <tbody style="width: 100%;overflow-y: scroll;">
                                 </tbody>
                             </table>
                         </div>
@@ -225,7 +233,76 @@ export class App {
                     </div>
                 </div>
             </body>
+            <script>
+            const vscode = acquireVsCodeApi();
+                    const databaseNameSpan = document.querySelector('#database-name-span');
             
+                    vscode.postMessage({
+                        command: 'get-db-name',
+                    })
+                    vscode.postMessage({
+                        command: 'get-collections',
+                    })
+                    window.addEventListener('message', event => {
+
+                        const message = event.data; // The JSON data our extension sent
+            
+                        switch (message.command) {
+                            case 'db-name':                              
+                                databaseNameSpan.innerHTML = message.dbName;
+                            break;
+                            case 'collections':
+                            const collectionsUl = document.querySelector ('#collection-list-ul');
+                                message.collectionsList.forEach(collection=>{
+                                    collectionsUl.insertAdjacentHTML    ('beforeend','<li data-id="'+collection.name+'" class="col">'+collection.name+'</li>')
+                                })
+                                addClickEvents(document.querySelector ('#collection-list-ul').querySelectorAll('li'),'collections');
+                            break;
+                            case 'documents':
+                                    const documentsUl = document.querySelector ('#document-list-ul');
+                                    message.documentsList.forEach(document=>{
+                                        documentsUl.insertAdjacentHTML    ('beforeend','<li data-collection="'+message.collection+  '" data-id="'+document._id+'" class="col"> Object_id('+document._id+')</li>')
+                                    });
+                                    addClickEvents(document.querySelector ('#document-list-ul').querySelectorAll('li'),'documents')  
+                            break;
+                            case 'single-document':
+                                    const tBody = document.querySelector 
+                                    ('tbody');
+                                    let keys = Object.getOwnPropertyNames(message.document);
+                                    keys.forEach(key=>{
+                                        console.log(key,tBody,message.document)
+                                        generateTr(tBody,key,message.document)
+                                    });
+                            break;
+                        }
+                    });
+                   
+                    function generateTr(body, key,object){
+                        body.insertAdjacentHTML('beforeend','<tr class="trBorderBottom"><td><span>'+key+'<span> :</td><td><span>'+object[key]+'</span></td><td class="datatype"><span>type:'+typeof object[key]+'</span></td></tr>')
+                    }
+                    function addClickEvents(list, type){
+                        if(type === 'collections'){
+                            list.forEach(li=>{
+                                li.addEventListener('click', function (e){
+                                    vscode.postMessage({
+                                        command: 'get-documents',
+                                        collectionName: li.dataset.id
+                                    })
+                                })
+                            })
+                        }else if (type ==='documents'){
+                            list.forEach(li=>{
+                                li.addEventListener('click', function (e){
+                                    vscode.postMessage({
+                                        command: 'get-document',
+                                        documentId: li.dataset.id,
+                                        collection:li.dataset.collection
+                                    })
+                                })
+                            })
+                        }
+                    }
+            </script>
             </html>`;
 
 
