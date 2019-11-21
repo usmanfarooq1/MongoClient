@@ -48,15 +48,12 @@ export class App {
             this.webviewPanel.webview.onDidReceiveMessage((message: any) => {
                 this.guiCommunicator(message);
             });
-            // let html = fs.readFileSync ('./index.html');
-            // if(html){
-            //     console.log(html);
-            // }
             this.webviewPanel.webview.html =`<!DOCTYPE html>
             <html lang="en">
             
             <head>
                 <meta charset="UTF-8">
+                <meta http-equiv="Content-Security-Policy" >
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <meta http-equiv="X-UA-Compatible" content="ie=edge">
                 <title>Mongo Client</title>
@@ -89,7 +86,7 @@ export class App {
             
                     .collections {
                         background-color: #404040;
-                        height: 70vh;
+                        height: 100vh;
                         width: 15vw;
                         margin-right: 3px;
                         text-align: center;
@@ -100,7 +97,7 @@ export class App {
             
                     .documents {
                         background-color: #404040;
-                        height: 70vh;
+                        height: 100vh;
                         width: 15vw;
                         margin-right: 3px;
                         text-align: center;
@@ -132,7 +129,7 @@ export class App {
             
                     .table {
                         width: 70vw;
-                        height: 70vh;
+                        height: 100vh;
                         background-color: #404040;
                         margin-bottom: 3px;
                         overflow: auto;
@@ -407,7 +404,7 @@ export class App {
     }
     private showInputSelection() {
         return new Promise((resolve, reject) => {
-            vscode.window.showQuickPick(['local', 'mongodb atlas', 'mlab']).then(option => {
+            vscode.window.showQuickPick(['local' /*, 'mongodb atlas', 'mlab'*/]).then(option => {
                 if (option) {
                     vscode.window.showInputBox({ placeHolder: 'Enter database name' }).then((name) => {
                         if (option && name) {
